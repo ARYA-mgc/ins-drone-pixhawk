@@ -233,12 +233,12 @@ MIT License
 ## 📷 Project Documentation & Logs
 
 ### Hardware Assembly & Flight Test
-![Real Flight Test](flight_test_v2.jpg)
-![Hardware Assembly](hardware_assembly.jpeg)
+<img src="flight_test_v2.jpg" width="600">
+<img src="hardware_assembly.jpeg" width="600">
 
 ### Real Log Images
-![Log Image 1](drones-09-00027-g013-550.jpg)
-![Log Image 2](drones-09-00405-g014-550.jpg)
+<img src="drones-09-00027-g013-550.jpg" width="600">
+<img src="drones-09-00405-g014-550.jpg" width="600">
 
 ### Flight Path Analysis
-![Flight Path](flight_test.jpg)
+<img src="flight_test.jpg" width="600">
