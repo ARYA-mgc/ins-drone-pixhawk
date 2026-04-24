@@ -233,11 +233,8 @@ MIT License
 ## 📷 Project Documentation & Logs
 
 ### Hardware Assembly & Flight Test
-![Real Flight Test](flight_test.webp)
+![Real Flight Test](flight_test_v2.jpg)
 ![Hardware Assembly](hardware_assembly.jpeg)
-
-### Real Flight Test (New Update)
-![New Flight Test Update](1650604862212.jpg)
 
 ### Real Log Images
 ![Log Image 1](drones-09-00027-g013-550.jpg)
