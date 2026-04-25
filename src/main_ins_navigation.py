@@ -230,10 +230,14 @@ class INSNavigationSystem:
         pos = self.ekf.state["pos"]
         vel = self.ekf.state["vel"]
         att = np.degrees(self.ekf.state["euler"])
+        ba  = self.ekf.state["accel_bias"]
+        bg  = np.degrees(self.ekf.state["gyro_bias"])
+        
         print(
             f"\r[{elapsed:7.2f}s] "
-            f"Pos(m) X={pos[0]:+7.2f} Y={pos[1]:+7.2f} Z={pos[2]:+7.2f}  "
-            f"Att(°) R={att[0]:+6.1f} P={att[1]:+6.1f} Y={att[2]:+6.1f}  "
+            f"Pos(m) X={pos[0]:+6.2f} Y={pos[1]:+6.2f} Z={pos[2]:+6.2f} | "
+            f"Att(°) R={att[0]:+5.1f} P={att[1]:+5.1f} Y={att[2]:+5.1f} | "
+            f"Bias A_z={ba[2]:+5.3f} G_z={bg[2]:+5.3f} | "
             f"IMU={self._imu_count:6d}",
             end="", flush=True,
         )

@@ -217,6 +217,18 @@ Plot with any CSV viewer, pandas, or MATLAB `readtable`.
 
 ---
 
+## 💻 Simulated in MATLAB
+
+The EKF core and navigation algorithms were first prototyped and validated in a high-fidelity MATLAB/Simulink simulation.
+
+### MATLAB Simulation & Simulink Models
+![Control Model](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/controlmodel.png)
+![Simulink Environment](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/800px-Drone_ctrl_simulink.png)
+
+For the full MATLAB source and documentation, see the [MATLAB Folder](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/).
+
+---
+
 ## 👤 Author
 
 **ARYA MGC**  
@@ -233,12 +245,13 @@ MIT License
 ## 📷 Project Documentation & Logs
 
 ### Hardware Assembly & Flight Test
-<img src="flight_test_v2.jpg" width="600">
-<img src="hardware_assembly.jpeg" width="600">
+![Flight Test V2](flight_test_v2.jpg)
+![Hardware Assembly](hardware_assembly.jpeg)
 
 ### Real Log Images
-<img src="drones-09-00027-g013-550.jpg" width="600">
-<img src="drones-09-00405-g014-550.jpg" width="600">
+![Log Image 1](drones-09-00027-g013-550.jpg)
+![Log Image 2](drones-09-00405-g014-550.jpg)
+![Mission Planner GCS](mission_planner_gcs.jpg)
 
 ### Flight Path Analysis
-<img src="flight_test.jpg" width="600">
+![Flight Path](flight_test.jpg)
