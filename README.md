@@ -1,5 +1,5 @@
 
- # 🛸 INS Navigation — Pixhawk Cube Orange + Raspberry Pi 4
+ # 🛸 ins-drone-pixhawk — INS Navigation System
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)](https://python.org)
 [![MAVLink](https://img.shields.io/badge/Protocol-MAVLink%202.0-green)](https://mavlink.io)
