@@ -227,6 +227,12 @@ The EKF core and navigation algorithms were first prototyped and validated in a 
 
 For the full MATLAB source and documentation, see the [MATLAB Folder](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/).
 
+### 🛠️ Core Simulation Components
+- 📂 [main_ins_navigation.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/main_ins_navigation.m) — Simulation entry point
+- 🧠 [ekf_core.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/ekf_core.m) — 15-state EKF implementation
+- 📡 [simulate_imu.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/simulate_imu.m) — Synthetic sensor data generator
+- ⚙️ [imu_noise_params.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/imu_noise_params.m) — Sensor noise configuration
+
 ---
 
 ## 👤 Author
