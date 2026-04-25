@@ -227,11 +227,27 @@ The EKF core and navigation algorithms were first prototyped and validated in a 
 
 For the full MATLAB source and documentation, see the [MATLAB Folder](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/).
 
-### 🛠️ Core Simulation Components
-- 📂 [main_ins_navigation.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/main_ins_navigation.m) — Simulation entry point
-- 🧠 [ekf_core.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/ekf_core.m) — 15-state EKF implementation
-- 📡 [simulate_imu.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/simulate_imu.m) — Synthetic sensor data generator
-- ⚙️ [imu_noise_params.m](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/imu_noise_params.m) — Sensor noise configuration
+### 🛠️ MATLAB Simulation Details
+For the full source code, see the [MATLAB Simulation Folder](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/).
+
+#### ⚙️ How It Works
+- **IMU Mechanisation**: Raw data is integrated using strapdown navigation equations to propagate position, velocity, and attitude.
+- **15-State EKF**: Fuses IMU, Barometer (10 Hz), and Magnetometer (50 Hz) while estimating accelerometer and gyroscope biases.
+- **Simulation Scenario**: Includes takeoff, figure-8 maneuvers, banked turns, and landing over a 30-second flight path.
+
+#### 📐 EKF State Vector (15-State)
+```
+x = [ p_x,  p_y,  p_z,        ← Position (NED, metres)
+      v_x,  v_y,  v_z,        ← Velocity (NED, m/s)
+      φ,    θ,    ψ,          ← Euler: roll, pitch, yaw (rad)
+      ba_x, ba_y, ba_z,       ← Accel Bias (m/s²)
+      bg_x, bg_y, bg_z ]      ← Gyro Bias (rad/s)
+```
+
+#### 📚 References
+1. Groves, P.D. (2013). *Principles of GNSS, Inertial, and Multisensor Integrated Navigation Systems*.
+2. Farrell, J.A. (2008). *Aided Navigation: GPS with High Rate Sensors*.
+3. Kalman, R.E. (1960). A New Approach to Linear Filtering and Prediction Problems.
 
 ---
 
