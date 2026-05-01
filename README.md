@@ -330,12 +330,53 @@ For the full MATLAB source, see the [MATLAB Simulation Folder](./INS%20SYSTEM%20
 
 ---
 
+## Known Limitations
+
+This section documents current constraints honestly. These are engineering realities, not deficiencies.
+
+**Accuracy Validation**: The 0.4-0.8 m RMSE figure is validated in simulation only. Real-flight accuracy requires RTK GPS or motion capture ground truth. Without external validation, accuracy claims for any INS system are estimates.
+
+**State Representation**: The system has migrated from Euler angles to an Error-State EKF with quaternion attitude (`eskf_core.py`). The legacy Euler-angle EKF is retained as a fallback via `--legacy` flag but is not recommended for production due to gimbal lock risk near +/-90 deg pitch.
+
+**Sensor Limitations**: Pure IMU + barometer + magnetometer fusion will drift over time without external correction. The magnetometer is susceptible to electromagnetic interference from motors and wiring. Innovation gating and 3-tier rejection mitigate this but cannot eliminate it. Long-duration GPS-denied flights require visual-inertial correction.
+
+**Optical Flow**: Flow-based velocity estimation requires a valid rangefinder for height scaling. Without range data, flow fusion is disabled. Low-texture surfaces produce unreliable flow.
+
+**Real-Time Constraints**: Python with GIL cannot guarantee hard real-time scheduling. Loop jitter is monitored and logged but not bounded. For flight-critical production deployments, a C/C++ port with SCHED_FIFO priority is recommended. The setup script includes an optional SCHED_FIFO hint.
+
+**Bias Tuning**: Gauss-Markov bias correlation time (tau) significantly affects convergence. The default tau=300s works for typical flights but should be tuned per-airframe using the `tools/bias_tuning.py` Allan variance tool with stationary sensor data.
+
+---
+
 ## Safety
 
 - Never arm the drone from code unless the area is clear of personnel and obstacles.
 - Test with propellers removed before live flights.
-- The `vision_position_injector` is disabled by default. Enable only after verifying EKF convergence.
+- The `vision_position_injector` is disabled by default. It auto-enables only after the ESKF reports HEALTHY status and auto-disables on FAULT.
+- Innovation gating rejects anomalous sensor readings, but is not a substitute for pilot override capability.
 - Always have an RC transmitter ready for manual override.
+
+---
+
+## Roadmap
+
+| Priority | Item | Status |
+|---|---|---|
+| High | Error-State Quaternion EKF | Implemented (`eskf_core.py`) |
+| High | Innovation gating (Mahalanobis) | Implemented |
+| High | 3-tier magnetometer rejection | Implemented |
+| High | Sensor initialization from accel+mag | Implemented |
+| High | Failure scenario testing | Implemented |
+| Medium | Monte Carlo validation (100+ runs) | Implemented |
+| Medium | Ground truth evaluation tool | Implemented |
+| Medium | Loop timing and jitter monitoring | Implemented |
+| Medium | Adaptive noise tuning | Implemented (R inflation) |
+| Future | Visual-Inertial Odometry (VIO) | Planned |
+| Future | ROS2 interface (/odom, /imu topics) | Planned |
+| Future | C++ real-time port | Planned |
+| Future | ArduPilot EKF3 blending (not override) | Planned |
+| Future | Hardware timestamp sync (camera+IMU) | Planned |
+| Future | SLAM / visual landmark fusion | Planned |
 
 ---
 
