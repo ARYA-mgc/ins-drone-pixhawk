@@ -25,6 +25,7 @@ from mavlink_bridge   import MAVLinkBridge
 from eskf_core        import ESKFCore, EKFHealth
 from imu_noise_params import IMUNoiseParams
 from dead_reckon      import DeadReckon
+from safety_monitor   import SafetyMonitor, SafetyAction
 from ins_logger       import INSLogger
 from adaptive_pid     import AdaptivePID
 from optical_flow_ins import OpticalFlowINS
@@ -81,6 +82,7 @@ class INSNavigationSystem:
         self.adaptive_pid = AdaptivePID(kp_base=1.0, ki_base=0.1, kd_base=0.05)
         self.optical_flow = OpticalFlowINS()
         self.time_sync = TimeSynchronizer(default_dt=self.dt)
+        self.safety = SafetyMonitor()
 
         # Vision injector (disabled by default, enabled after convergence)
         self._vision_enabled = False
@@ -257,15 +259,32 @@ class INSNavigationSystem:
                         self.eskf.update_optical_flow(
                             vx, vy, msg.distance, msg.quality)
 
-        # ── Health-based vision injection control ──────────
+        # ── Safety & Health ─────────────────────────────────────────
+        pos = self.eskf.state["pos"]
+        vel = self.eskf.state["vel"]
+        att = self.eskf.state["euler"]
+        
+        # Hard safety enforcement
+        safety_action = self.safety.check(pos, vel, att)
+        
+        if safety_action == SafetyAction.FORCE_DISARM:
+            # Tell Pixhawk to disarm! (MAVLink command)
+            self.bridge.send_statustext("INS CRITICAL FAULT - DISARM", 2)
+            # You could add actual MAV_CMD_COMPONENT_ARM_DISARM here
+            
         health = self.eskf.health
-        if health == EKFHealth.FAULT and self._vision_enabled:
+        
+        # Vision enabled ONLY if ESKF is healthy AND safety monitor says OK
+        can_inject = (health == EKFHealth.HEALTHY and self.safety.is_injection_safe)
+        
+        if not can_inject and self._vision_enabled:
             self._vision_enabled = False
-            log.error("ESKF FAULT: vision injection DISABLED")
-            self.bridge.send_statustext("INS FAULT: vision disabled", 4)
-        elif health == EKFHealth.HEALTHY and not self._vision_enabled:
+            log.error(f"Vision injection DISABLED! Health={health.name}, Safety={safety_action.name}")
+            self.bridge.send_statustext("INS: Vision disabled", 4)
+        elif can_inject and not self._vision_enabled:
             self._vision_enabled = True
-            log.info("ESKF healthy: vision injection available")
+            log.info("Vision injection ENABLED")
+            self.bridge.send_statustext("INS: Vision enabled", 6)
 
     # ── sensor initialization ──────────────────────────────────
     def _try_initialize(self):
