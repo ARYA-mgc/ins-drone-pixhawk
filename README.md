@@ -68,24 +68,6 @@ Post-flight 3D trajectory reconstruction rendered in a satellite-overlay viewer.
 
 ![3D Flight Path Visualization](flight_test.jpg)
 
-### INS Trajectory and Pose Error Analysis
-
-Four-panel analysis comparing INS estimation methods: (a) 3D flight trajectories for true data, proposed EKF, VINS, and VIO-VIS; (b) per-axis (X/Y/Z) position tracking over 80 seconds; (c) roll, pitch, and yaw attitude estimation errors; (d) Absolute Pose Error (APE) with RMSE of approximately 0.06 m using Sim(3) Umeyama alignment. Demonstrates sub-decimetre accuracy for the proposed EKF approach.
-
-![INS Trajectory and Pose Error Analysis](drones-09-00027-g013-550.jpg)
-
-### Azimuth Angle Error Comparison
-
-Relative azimuth angle error over 8000 seconds comparing three estimation approaches: graph optimization (orange), Kalman filter (teal), and data link results (gold). All methods maintain error within +/- 0.01 radians (0.57 degrees). The filter results show the smoothest response with least high-frequency noise, validating the EKF's heading estimation stability for long-duration flights.
-
-![Azimuth Angle Error Comparison](drones-09-00405-g014-550.jpg)
-
-### MATLAB/Simulink Control System Design
-
-Split-panel view of the MATLAB Control System Tuner and Simulink model. Left panel shows step-tracking goal responses for the MIMO UAV controller with actual vs desired response across multiple channels. Right panel displays the full Simulink block diagram including the plant model, PID subsystem controller, and feedback loop architecture. This MATLAB model served as the prototype for the Python EKF implementation.
-
-![MATLAB Simulink Control Model](flight_test_v2.jpg)
-
 ---
 
 ## Repository Structure
@@ -328,23 +310,9 @@ mag:
 
 ## MATLAB Simulation Heritage
 
-The EKF core and navigation algorithms were first prototyped and validated in a high-fidelity MATLAB/Simulink simulation environment before being ported to Python for embedded deployment on the Raspberry Pi 4.
+The EKF core and navigation algorithms were first prototyped and validated in a high-fidelity MATLAB/Simulink simulation environment before being ported to Python for embedded deployment on the Raspberry Pi 4. The simulation uses a 15-state Euler-angle EKF; the production system has since migrated to a 16-state quaternion ESKF.
 
-### MATLAB Source Files
-
-| File | Description |
-|---|---|
-| `main_ins_navigation.m` | Simulation entry point and main loop |
-| `ekf_core.m` | 15-state EKF implementation |
-| `generate_trajectory.m` | Synthetic flight path generator |
-| `simulate_imu.m` | Noisy IMU measurement simulator |
-| `dead_reckon.m` | Dead-reckoning baseline |
-| `imu_noise_params.m` | Sensor noise configuration |
-| `plot_results.m` | Post-simulation plotting |
-| `benchmark_performance.m` | Performance benchmarking |
-| `run_unit_tests.m` | MATLAB unit test suite |
-
-For the full MATLAB source, see the [MATLAB Simulation Folder](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/simulation_source/).
+For full simulation documentation, results, and visual analysis, see the [MATLAB Simulation README](./INS%20SYSTEM%20SIMULATED%20USING%20THE%20MATLAB/README.md).
 
 ### References
 
