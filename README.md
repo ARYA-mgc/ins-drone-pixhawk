@@ -379,7 +379,7 @@ This section documents current constraints honestly. These are engineering reali
 | Medium | ArduPilot EKF3 blending (Covariance Intersection) | Done (`ekf3_blender.py`) |
 | Medium | SLAM pose fusion (Umeyama alignment) | Done (`slam_interface.py`) |
 | Medium | Generic external measurement update | Done (`eskf_core.py: update_external`) |
-| Future | Real-flight RTK ground truth validation | Pending hardware test |
+
 
 ---
 
