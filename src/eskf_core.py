@@ -71,6 +71,8 @@ class ESKFCore:
         self._health = EKFHealth.CONVERGING
         self._mag_reject_until = 0.0
         self._calibrated_mag_norm = 0.5  # Gauss, updated during init
+        self._mag_consecutive_good = 0
+        self._mag_required_good = 10
         self._innovation_stats = {"baro": [], "mag": []}
 
         # --- Nominal state (16) ---
@@ -304,18 +306,25 @@ class ESKFCore:
         Magnetometer yaw update with 3-tier rejection:
           1. Field norm check: skip if |norm - calibrated| > 30%
           2. Time-based rejection: skip if recently EMI-contaminated
-          3. Innovation gating: Mahalanobis distance
+          3. Multi-sample re-enable: require N good samples before fusion
         """
         # Tier 1: field norm check
         if mag_norm > 0:
             norm_ratio = abs(mag_norm / self._calibrated_mag_norm - 1.0)
             if norm_ratio > self.MAG_NORM_TOLERANCE:
                 self._mag_reject_until = t_now + self.MAG_REJECT_DURATION
+                self._mag_consecutive_good = 0
                 log.debug(f"Mag rejected (norm): ratio={norm_ratio:.2f}")
                 return
 
         # Tier 2: time-based rejection
         if t_now > 0 and t_now < self._mag_reject_until:
+            self._mag_consecutive_good = 0
+            return
+
+        # Tier 3: Multi-sample re-enable
+        self._mag_consecutive_good += 1
+        if self._mag_consecutive_good < self._mag_required_good:
             return
 
         # Get predicted yaw from quaternion
