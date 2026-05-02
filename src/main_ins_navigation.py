@@ -240,15 +240,26 @@ class INSNavigationSystem:
 
         elif mtype == "OPTICAL_FLOW_RAD":
             if self.eskf._initialized:
-                if hasattr(msg, 'distance') and msg.distance > 0:
-                    flow_vx = (msg.integrated_x - msg.integrated_xgyro)
-                    flow_vy = (msg.integrated_y - msg.integrated_ygyro)
-                    dt_flow = msg.integration_time_us / 1e6
-                    if dt_flow > 0:
-                        vx = flow_vx * msg.distance / dt_flow
-                        vy = flow_vy * msg.distance / dt_flow
-                        self.eskf.update_optical_flow(
-                            vx, vy, msg.distance, msg.quality)
+                # 1. Require valid rangefinder
+                if not hasattr(msg, 'distance') or msg.distance <= 0.05:
+                    return
+
+                # 2. Reject during high angular rates (prevents smearing/aliasing)
+                gyro_x_rate = abs(msg.integrated_xgyro / (msg.integration_time_us / 1e6))
+                gyro_y_rate = abs(msg.integrated_ygyro / (msg.integration_time_us / 1e6))
+                if gyro_x_rate > 1.5 or gyro_y_rate > 1.5:  # ~85 deg/s
+                    return
+
+                flow_vx = (msg.integrated_x - msg.integrated_xgyro)
+                flow_vy = (msg.integrated_y - msg.integrated_ygyro)
+                dt_flow = msg.integration_time_us / 1e6
+                
+                if dt_flow > 0:
+                    # 3. Height scaling (flow_rad * height / dt)
+                    vx = flow_vx * msg.distance / dt_flow
+                    vy = flow_vy * msg.distance / dt_flow
+                    self.eskf.update_optical_flow(
+                        vx, vy, msg.distance, msg.quality)
 
         # ── Safety & Health ─────────────────────────────────────────
         pos = self.eskf.state["pos"]
