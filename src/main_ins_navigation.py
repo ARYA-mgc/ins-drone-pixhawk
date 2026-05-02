@@ -27,6 +27,7 @@ from imu_noise_params import IMUNoiseParams
 from dead_reckon      import DeadReckon
 from safety_monitor   import SafetyMonitor, SafetyAction
 from loop_monitor     import LoopMonitor
+from time_sync        import TimeSynchronizer
 from ins_logger       import INSLogger
 from structured_logger import StructuredLogger
 from adaptive_pid     import AdaptivePID

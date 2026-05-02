@@ -12,7 +12,7 @@
 
 ## Overview
 
-NavCore-Pixhawk implements a tightly-coupled Inertial Navigation System for hexacopter UAVs operating without GPS dependency. The system fuses onboard IMU, barometer, and magnetometer data through a 15-state Extended Kalman Filter, providing continuous position, velocity, attitude, and bias estimates. Filtered navigation states are injected back into ArduPilot's EKF3 as an external navigation source via `VISION_POSITION_ESTIMATE`, enabling autonomous flight in GPS-denied environments.
+NavCore-Pixhawk implements a tightly-coupled Inertial Navigation System for hexacopter UAVs operating without GPS dependency. The system fuses onboard IMU, barometer, and magnetometer data through a **16-state Error-State Quaternion EKF (ESKF)**, providing continuous position, velocity, attitude, and bias estimates. Filtered navigation states are injected back into ArduPilot's EKF3 as an external navigation source via `VISION_POSITION_ESTIMATE`, enabling autonomous flight in GPS-denied environments.
 
 ---
 
@@ -20,12 +20,14 @@ NavCore-Pixhawk implements a tightly-coupled Inertial Navigation System for hexa
 
 | Parameter | Value |
 |---|---|
+| Estimator | 16-state Error-State Quaternion EKF (ESKF) |
 | EKF Rate | 50 Hz / 100 Hz (configurable) |
-| Sensors Fused | IMU (ICM-42688) + Barometer (MS5611) + Magnetometer (RM3100) |
-| Position RMSE | 0.4 -- 0.8 m (validated against MATLAB simulation) |
+| Sensors Fused | IMU (ICM-42688) + Barometer (MS5611) + Magnetometer (RM3100) + Optical Flow (optional) |
+| Position RMSE | 0.4 -- 0.8 m (**simulation only** -- real-flight validation requires RTK/AprilTag ground truth) |
 | Protocol | MAVLink 2.0 via `pymavlink` |
 | GPS Injection | `VISION_POSITION_ESTIMATE` into ArduPilot EKF3 |
-| Logging | CSV at 50 Hz + optional UDP telemetry to GCS |
+| Logging | CSV at 50 Hz + structured JSONL + optional UDP telemetry to GCS |
+| Safety | Hard velocity/tilt/position-jump limits, automatic vision injection disable on fault |
 | Platform | Hexacopter UAV |
 
 ---
@@ -93,15 +95,37 @@ NavCore-Pixhawk/
 ├── src/
 │   ├── main_ins_navigation.py       <- Entry point and system coordinator
 │   ├── mavlink_bridge.py            <- MAVLink 2.0 interface to Pixhawk
-│   ├── ekf_core.py                  <- 15-state Extended Kalman Filter
+│   ├── eskf_core.py                 <- 16-state Error-State Quaternion EKF (production)
 │   ├── imu_noise_params.py          <- Sensor noise configuration (YAML loader)
+│   ├── config_loader.py             <- Strict YAML schema validation (fail-fast)
 │   ├── dead_reckon.py               <- Fallback strapdown dead-reckoning
+│   ├── time_sync.py                 <- Hardware timestamp synchronization
+│   ├── safety_monitor.py            <- Hard velocity/tilt/position-jump limits
+│   ├── loop_monitor.py              <- Real-time loop timing and jitter tracking
+│   ├── fault_manager.py             <- Sensor dropout handling and mode escalation
 │   ├── ins_logger.py                <- CSV + UDP telemetry logger
+│   ├── structured_logger.py         <- JSONL structured state/innovation logger
 │   ├── vision_position_injector.py  <- Feeds INS state into ArduPilot EKF3
 │   ├── adaptive_pid.py              <- Gain-scheduled adaptive PID controller
-│   └── optical_flow_ins.py          <- Optical flow velocity/position estimator
+│   ├── optical_flow_ins.py          <- Optical flow velocity/position estimator
+│   ├── allan_variance.py            <- Auto noise tuning from stationary logs
+│   ├── log_replay.py                <- Offline JSONL/MAVLink log replay
+│   ├── ground_truth_eval.py         <- APE/RPE computation (RTK/AprilTag CSV)
+│   ├── ekf_comparison.py            <- ESKF vs EKF3 divergence analysis
+│   ├── ekf3_blender.py              <- EKF3 weighted blending (stub)
+│   ├── ros2_interface.py            <- Optional ROS2 publisher (stub)
+│   ├── vio_pipeline.py              <- VIO pose injection (stub)
+│   ├── uwb_fusion.py                <- UWB range fusion (stub)
+│   └── slam_interface.py            <- SLAM pose correction (stub)
+├── cpp_port/
+│   ├── CMakeLists.txt               <- C++17 + Eigen3 portable build
+│   ├── include/eskf_core.hpp        <- ESKF types and API
+│   ├── src/eskf_core.cpp            <- Full ESKF C++ implementation
+│   └── tests/test_eskf.cpp          <- Smoke test
 ├── tests/
-│   ├── test_ins.py                  <- pytest unit tests (EKF, DR, noise)
+│   ├── test_ins.py                  <- pytest unit tests (ESKF, DR, noise)
+│   ├── test_failure_scenarios.py    <- Sensor dropout, noise spike, divergence tests
+│   ├── monte_carlo_sim.py           <- Monte Carlo validation (100+ runs)
 │   └── benchmark_sitl.py           <- Software-in-the-loop benchmark
 ├── config/
 │   └── noise_params.yaml           <- Tunable sensor noise parameters
@@ -122,9 +146,9 @@ NavCore-Pixhawk/
 
 Top-level entry point that orchestrates the entire INS pipeline. Initialises all subsystems (MAVLink bridge, EKF, dead-reckoning, adaptive PID, optical flow), manages the real-time main loop, and handles graceful shutdown via SIGINT/SIGTERM. The main loop dispatches incoming MAVLink messages (RAW_IMU, SCALED_PRESSURE, SCALED_IMU2/3, ATTITUDE, GPS_RAW_INT, OPTICAL_FLOW_RAD) to their respective handlers. Periodic tasks include CSV logging at 50 Hz, console output at 10 Hz, and system statistics every 5 seconds. Monitors Raspberry Pi CPU temperature and sends MAVLink STATUSTEXT warnings when it exceeds 80 C. Supports UART, USB, and TCP (SITL) connections via command-line arguments.
 
-### src/ekf_core.py -- 15-State Extended Kalman Filter
+### src/eskf_core.py -- 16-State Error-State Quaternion EKF
 
-Core state estimation engine implementing a 15-state EKF. State vector: `x = [px, py, pz, vx, vy, vz, phi, theta, psi, ba_x, ba_y, ba_z, bg_x, bg_y, bg_z]` covering position (NED), velocity (NED), Euler angles, accelerometer bias, and gyroscope bias. The predict step performs IMU mechanisation with bias compensation: transforms body-frame specific force to NED via rotation matrix, integrates velocity and position, and propagates attitude using the Euler rate transform matrix. Covariance propagation uses a numerically-computed 15x15 Jacobian `F`. Measurement updates for barometric altitude (observes `pz`) and magnetometer yaw (observes `psi`) use standard Kalman gain computation with angle wrapping for yaw innovation.
+Production state estimation engine implementing a 16-state Error-State Kalman Filter with quaternion attitude representation. State vector: `x = [px, py, pz, vx, vy, vz, qw, qx, qy, qz, ba_x, ba_y, ba_z, bg_x, bg_y, bg_z]` covering position (NED), velocity (NED), attitude quaternion (gimbal-lock-free), accelerometer bias, and gyroscope bias. The error state uses a 15-dimensional vector with rotation error parameterised as a 3-vector. The predict step performs IMU mechanisation with bias compensation using the rotation matrix derived from the quaternion. Measurement updates for barometric altitude and magnetometer yaw use Joseph-form covariance updates (`P = (I-KH)P(I-KH)^T + KRK^T`) with innovation gating and 3-tier magnetometer rejection. Covariance hardening enforces symmetry and bounds eigenvalues every step. The legacy Euler-angle EKF has been permanently removed.
 
 ### src/mavlink_bridge.py -- MAVLink Hardware Interface
 
@@ -178,13 +202,13 @@ The system follows a three-layer pipeline: sensor acquisition, state estimation,
 
 **Sensor Layer** -- The Pixhawk Cube Orange streams raw IMU data at 100 Hz, barometric pressure at 10 Hz, and magnetometer readings at 50 Hz over a MAVLink 2.0 UART link at 921600 baud.
 
-**Estimation Layer** -- `mavlink_bridge.py` on the Raspberry Pi 4 receives and parses `RAW_IMU`, `SCALED_PRESSURE`, and `SCALED_IMU3` messages. The parsed sensor data is passed to `ekf_core.py`, which implements a 15-state Extended Kalman Filter:
+**Estimation Layer** -- `mavlink_bridge.py` on the Raspberry Pi 4 receives and parses `RAW_IMU`, `SCALED_PRESSURE`, and `SCALED_IMU3` messages. The parsed sensor data is passed to `eskf_core.py`, which implements a 16-state Error-State Quaternion EKF:
 
-- **State Vector**: `x = [px, py, pz, vx, vy, vz, phi, theta, psi, ba_x, ba_y, ba_z, bg_x, bg_y, bg_z]`
-- **Predict**: IMU mechanisation with bias compensation propagates the state forward
-- **Propagate**: Covariance update via `P_minus = F * P * F^T + Q`
-- **Update**: Kalman gain `K = P_minus * H^T * (H * P_minus * H^T + R)^-1` for baro and mag
-- **Correct**: State corrected with barometric altitude and magnetometer yaw observations
+- **State Vector**: `x = [px, py, pz, vx, vy, vz, qw, qx, qy, qz, ba_x, ba_y, ba_z, bg_x, bg_y, bg_z]`
+- **Predict**: IMU mechanisation with quaternion rotation and bias compensation
+- **Propagate**: Covariance via `P = F * P * F^T + Q * dt` with Joseph-form measurement updates
+- **Harden**: Symmetry enforcement, eigenvalue bounding, condition number monitoring
+- **Safety Gate**: Hard velocity/tilt/position-jump limits via `safety_monitor.py`
 
 **Output Layer** -- Estimated states are distributed to: `ins_logger` (CSV at 50 Hz), `vision_position_injector` (30 Hz to ArduPilot EKF3), `adaptive_pid` (gain-scheduled altitude control), and console output for real-time monitoring.
 
@@ -334,17 +358,17 @@ For the full MATLAB source, see the [MATLAB Simulation Folder](./INS%20SYSTEM%20
 
 This section documents current constraints honestly. These are engineering realities, not deficiencies.
 
-**Accuracy Validation**: The 0.4-0.8 m RMSE figure is validated in simulation only. Real-flight accuracy requires RTK GPS or motion capture ground truth. Without external validation, accuracy claims for any INS system are estimates.
+**Accuracy Validation**: The 0.4-0.8 m RMSE figure is validated **in simulation only**. Real-flight accuracy requires RTK GPS or motion capture ground truth. The `ground_truth_eval.py` tool is available for APE/RPE computation against standardised CSV ground-truth data, but has not yet been validated against real hardware ground truth.
 
-**State Representation**: The system has migrated from Euler angles to an Error-State EKF with quaternion attitude (`eskf_core.py`). The legacy Euler-angle EKF is retained as a fallback via `--legacy` flag but is not recommended for production due to gimbal lock risk near +/-90 deg pitch.
+**State Representation**: The system uses exclusively a 16-state Error-State Quaternion EKF (`eskf_core.py`). The legacy Euler-angle EKF has been **permanently deleted**. There is no fallback to Euler angles.
 
-**Sensor Limitations**: Pure IMU + barometer + magnetometer fusion will drift over time without external correction. The magnetometer is susceptible to electromagnetic interference from motors and wiring. Innovation gating and 3-tier rejection mitigate this but cannot eliminate it. Long-duration GPS-denied flights require visual-inertial correction.
+**Sensor Limitations**: Pure IMU + barometer + magnetometer fusion will drift over time without external correction. The magnetometer is treated as unreliable by default — 3-tier rejection (norm check, EMI cooldown, multi-sample re-enable) mitigates interference but cannot eliminate it. Long-duration GPS-denied flights require visual-inertial correction.
 
-**Optical Flow**: Flow-based velocity estimation requires a valid rangefinder for height scaling. Without range data, flow fusion is disabled. Low-texture surfaces produce unreliable flow.
+**Optical Flow**: Flow-based velocity estimation requires a valid rangefinder (distance > 0.05m) for height scaling. Without range data, flow fusion is **completely disabled**. High angular rate (> 1.5 rad/s) samples are also rejected to prevent motion smearing. Low-texture surfaces produce unreliable flow.
 
-**Real-Time Constraints**: Python with GIL cannot guarantee hard real-time scheduling. Loop jitter is monitored and logged but not bounded. For flight-critical production deployments, a C/C++ port with SCHED_FIFO priority is recommended. The setup script includes an optional SCHED_FIFO hint.
+**Real-Time Constraints**: Python with GIL cannot guarantee hard real-time scheduling. Loop jitter is monitored via `loop_monitor.py` with histogram tracking and OS-level scheduling hints, but timing is not bounded. For flight-critical production deployments, the C++ port (`cpp_port/`) with `SCHED_FIFO` priority is recommended.
 
-**Bias Tuning**: Gauss-Markov bias correlation time (tau) significantly affects convergence. The default tau=300s works for typical flights but should be tuned per-airframe using the `tools/bias_tuning.py` Allan variance tool with stationary sensor data.
+**Bias Tuning**: Gauss-Markov bias correlation time (tau) significantly affects convergence. Use `allan_variance.py` with stationary sensor logs to extract proper noise parameters. The default tau=300s works for typical flights but should be tuned per-airframe.
 
 ---
 
@@ -362,21 +386,31 @@ This section documents current constraints honestly. These are engineering reali
 
 | Priority | Item | Status |
 |---|---|---|
-| High | Error-State Quaternion EKF | Implemented (`eskf_core.py`) |
-| High | Innovation gating (Mahalanobis) | Implemented |
-| High | 3-tier magnetometer rejection | Implemented |
-| High | Sensor initialization from accel+mag | Implemented |
-| High | Failure scenario testing | Implemented |
-| Medium | Monte Carlo validation (100+ runs) | Implemented |
-| Medium | Ground truth evaluation tool | Implemented |
-| Medium | Loop timing and jitter monitoring | Implemented |
-| Medium | Adaptive noise tuning | Implemented (R inflation) |
-| Future | Visual-Inertial Odometry (VIO) | Planned |
-| Future | ROS2 interface (/odom, /imu topics) | Planned |
-| Future | C++ real-time port | Planned |
-| Future | ArduPilot EKF3 blending (not override) | Planned |
-| Future | Hardware timestamp sync (camera+IMU) | Planned |
-| Future | SLAM / visual landmark fusion | Planned |
+| High | Error-State Quaternion EKF (ESKF) | Done (`eskf_core.py`) |
+| High | Legacy Euler EKF removal | Done (permanently deleted) |
+| High | Joseph-form covariance updates | Done |
+| High | Innovation gating (Mahalanobis) | Done |
+| High | 3-tier magnetometer rejection | Done (multi-sample re-enable) |
+| High | Sensor initialization from accel+mag | Done |
+| High | Hard safety enforcement (velocity/tilt/position-jump) | Done (`safety_monitor.py`) |
+| High | Hardware timestamp synchronization | Done (`time_sync.py`) |
+| High | Strict config validation (fail-fast) | Done (`config_loader.py`) |
+| High | Failure scenario testing | Done (sensor dropout, noise spike, covariance) |
+| Medium | Monte Carlo validation (100+ runs) | Done (`monte_carlo_sim.py`) |
+| Medium | Ground truth evaluation tool (APE/RPE) | Done (`ground_truth_eval.py`) |
+| Medium | ESKF vs EKF3 divergence analysis | Done (`ekf_comparison.py`) |
+| Medium | Allan Variance auto-tuning | Done (`allan_variance.py`) |
+| Medium | Offline log replay | Done (`log_replay.py`) |
+| Medium | Structured JSONL logging | Done (`structured_logger.py`) |
+| Medium | Loop timing and jitter monitoring | Done (`loop_monitor.py`) |
+| Medium | Fault manager state machine | Done (`fault_manager.py`) |
+| Medium | C++17 + Eigen3 port scaffold | Done (`cpp_port/`) |
+| Future | Visual-Inertial Odometry (VIO) | Stub ready (`vio_pipeline.py`) |
+| Future | ROS2 interface (/odom, /imu topics) | Stub ready (`ros2_interface.py`) |
+| Future | UWB range fusion | Stub ready (`uwb_fusion.py`) |
+| Future | ArduPilot EKF3 blending | Stub ready (`ekf3_blender.py`) |
+| Future | SLAM / visual landmark fusion | Stub ready (`slam_interface.py`) |
+| Future | Real-flight RTK ground truth validation | Pending hardware test |
 
 ---
 
