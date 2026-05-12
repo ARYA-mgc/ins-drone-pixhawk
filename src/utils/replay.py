@@ -12,8 +12,8 @@ log = logging.getLogger("log_replay")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from eskf_core import ESKF, EKFHealth
-from imu_noise_params import IMUNoiseParams
+from core.eskf import ESKF, EKFHealth
+from utils.noise import IMUNoiseParams
 from logger.struct_log import StructuredLogger
 
 

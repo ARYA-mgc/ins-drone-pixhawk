@@ -32,7 +32,7 @@ def dr(noise):
 
 
 # ── ESKF tests ──────────────────────────────────────────────────
-class TestESKFCore:
+class TestESKF:
 
     def test_initial_quaternion_identity(self, eskf):
         """Initial attitude should be identity quaternion [1,0,0,0]."""

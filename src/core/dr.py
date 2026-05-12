@@ -3,7 +3,7 @@
 
 import math
 import numpy as np
-from imu_noise_params import IMUNoiseParams
+from utils.noise import IMUNoiseParams
 
 GRAVITY = np.array([0.0, 0.0, 9.80665])
 
