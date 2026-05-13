@@ -77,12 +77,6 @@ Carbon-fibre hexacopter frame with Pixhawk Cube Orange flight controller (orange
 
 ![Hexacopter Hardware Assembly](doc/hardware.jpeg)
 
-### 3D Flight Path Visualization
-
-Post-flight 3D trajectory reconstruction rendered in a satellite-overlay viewer. The colour gradient (green to orange to red) encodes distance from home position. The flight path shows multiple waypoint traversals, loiter patterns, and return-to-launch segments. The END marker indicates the final landing position.
-
-![3D Flight Path Visualization](doc/flight3d.jpg)
-
 ---
 
 ## Repository Structure
