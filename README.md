@@ -47,11 +47,13 @@ We pushed the codebase beyond a simple Kalman Filter by adding advanced percepti
 
 ## Hexacopter Flight Test Video
 
-Live flight test of the hexacopter with NavCore-Pixhawk INS active, validating real-time state estimation performance under actual flight conditions. GPS was enabled during this test solely as a safety fallback and was not used as a navigation input to the INS pipeline.
-
-https://github.com/ARYA-mgc/NavCore-Pixhawk/raw/main/doc/flight.mp4
-
-> If the video does not render inline, download [`flight.mp4`](doc/flight.mp4) directly from the repository.
+> [!IMPORTANT]
+> **Live Flight Test Validation**  
+> Live flight test of the hexacopter with NavCore-Pixhawk INS active, validating real-time state estimation performance under actual flight conditions. GPS was enabled during this test solely as a safety fallback and was not used as a navigation input to the INS pipeline.
+> 
+> 🎥 **[Watch the Flight Video](https://github.com/ARYA-mgc/NavCore-Pixhawk/raw/main/doc/flight.mp4)**
+> 
+> *If the video does not render inline, download [`flight.mp4`](doc/flight.mp4) directly from the repository.*
 
 ---
 
