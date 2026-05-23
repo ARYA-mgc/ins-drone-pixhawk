@@ -71,12 +71,6 @@ Mission Planner compass priority and onboard magnetometer calibration interface.
 
 ![Compass Calibration - Onboard Magnetometer Setup](doc/compass_calib.png)
 
-### Hexacopter Hardware Assembly
-
-Carbon-fibre hexacopter frame with Pixhawk Cube Orange flight controller (orange housing, centre-mounted), external GPS/compass module on mast, ESCs with XT60 connectors, and telemetry radio. The companion computer (Raspberry Pi 4) connects via TELEM2 UART for real-time INS data streaming.
-
-![Hexacopter Hardware Assembly](doc/hardware.jpeg)
-
 ---
 
 ## Repository Structure
